@@ -4,6 +4,7 @@ import SetupScreen from './components/SetupScreen';
 import RoleConfigScreen from './components/RoleConfigScreen';
 import RevealScreen from './components/RevealScreen';
 import DashboardScreen from './components/DashboardScreen';
+import HomeButton from '../../components/HomeButton';
 
 export default function MafiaGame() {
     const [stage, setStage] = useState('setup'); // setup, config, reveal, dashboard
@@ -29,6 +30,7 @@ export default function MafiaGame() {
 
     return (
         <div style={{ width: '100%', maxWidth: '600px', margin: '0 auto', paddingBottom: '2rem' }}>
+            <HomeButton />
             <AnimatePresence mode="wait">
                 {stage === 'setup' && (
                     <SetupScreen key="setup" onNext={goToConfig} />

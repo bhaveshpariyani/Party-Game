@@ -3,6 +3,7 @@ import { AnimatePresence } from 'framer-motion';
 import SetupScreen from './components/SetupScreen';
 import ScorepadScreen from './components/ScorepadScreen';
 import RoundInputScreen from './components/RoundInputScreen';
+import HomeButton from '../../components/HomeButton';
 
 export default function JudgementGame() {
     const [stage, setStage] = useState('setup'); // setup, roundInput, scorepad
@@ -68,6 +69,7 @@ export default function JudgementGame() {
 
     return (
         <div style={{ width: '100%', maxWidth: '800px', margin: '0 auto', paddingBottom: '2rem' }}>
+            <HomeButton />
             <AnimatePresence mode="wait">
                 {stage === 'setup' && (
                     <SetupScreen key="setup" onStart={startGame} />
