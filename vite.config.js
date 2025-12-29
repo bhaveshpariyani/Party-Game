@@ -10,8 +10,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
       manifest: {
-        name: 'Party Games Companion',
-        short_name: 'PartyGames',
+        name: 'The Game App',
+        short_name: 'The Game App',
         description: 'Helper app for Mafia and Judgement party games',
         theme_color: '#0f0f1a',
         background_color: '#0f0f1a',
