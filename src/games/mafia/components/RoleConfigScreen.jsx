@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Minus, Plus, ArrowRight, ArrowLeft, Users, User, Shield, Search, Zap, Skull, Mic, Trash2, HelpCircle } from 'lucide-react';
+import { Minus, Plus, ArrowRight, ArrowLeft, Users, User, Shield, Search, Zap, Skull, Mic, Trash2, HelpCircle, Crown } from 'lucide-react';
 import clsx from 'clsx';
 
 const AVAILABLE_ROLES = [
@@ -8,7 +8,7 @@ const AVAILABLE_ROLES = [
     { id: 'mafia', label: 'Mafia', icon: Skull, color: '#ef4444' },
     { id: 'doctor', label: 'Doctor', icon: Shield, color: '#3b82f6' },
     { id: 'detective', label: 'Detective', icon: Search, color: '#f59e0b' },
-    { id: 'godfather', label: 'Godfather', icon: Zap, color: '#8b5cf6' },
+    { id: 'godfather', label: 'Godfather', icon: Crown, color: '#8b5cf6' },
     { id: 'presenter', label: 'Presenter', icon: Mic, color: '#ec4899' },
 ];
 
