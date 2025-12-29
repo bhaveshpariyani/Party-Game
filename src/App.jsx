@@ -46,6 +46,7 @@ function App() {
     }
 
     if (isAndroid) {
+      // Try getting installed apps (Chrome-specific feature)
       if ('getInstalledRelatedApps' in navigator) {
         try {
           const relatedApps = await navigator.getInstalledRelatedApps();
@@ -55,11 +56,8 @@ function App() {
           }
         } catch (e) { console.warn(e); }
       }
-      // Intent fallback
-      const hostname = window.location.hostname;
-      // Basic intent structure, might need manifest adjustments for full support
-      // But fulfilling user request to include this logic:
-      window.location.href = `intent://${hostname}/?source=pwa#Intent;scheme=https;package=com.partygames.pwa;end`;
+      // Fallback to simple navigation since we don't have a native APK package
+      window.location.href = appUrl;
       return;
     }
 
