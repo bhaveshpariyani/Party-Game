@@ -29,7 +29,7 @@ export default function RevealScreen({ assignments, onComplete }) {
     if (isFinished) return null;
 
     return (
-        <div style={{ perspective: '1000px', height: '60vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ perspective: '1000px', minHeight: '85vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', paddingTop: '2rem' }}>
             <AnimatePresence mode="wait">
                 <motion.div
                     key={index}
