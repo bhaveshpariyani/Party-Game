@@ -46,18 +46,18 @@ function App() {
     }
 
     if (isAndroid) {
-      // Try getting installed apps (Chrome-specific feature)
-      if ('getInstalledRelatedApps' in navigator) {
-        try {
-          const relatedApps = await navigator.getInstalledRelatedApps();
-          if (relatedApps.length > 0) {
-            window.location.href = appUrl;
-            return;
-          }
-        } catch (e) { console.warn(e); }
-      }
-      // Fallback to simple navigation since we don't have a native APK package
-      window.location.href = appUrl;
+      // 1. Try Custom Protocol (Reliable way to open installed PWA if registered)
+      // This will trigger "Open with..." or open the app directly
+      window.location.href = 'web+thegameapp://start';
+
+      // 2. Fallback timeout in case protocol fails (though in browser logic, this is tricky to catch synchronously)
+      // Since we can't easily detect protocol failure without page hide hacks, we rely on the system handling it.
+      // If not installed, it might just do a google search for the protocol or nothing.
+
+      // As a safe backup if protocol doesn't engage, we reload the page with param
+      setTimeout(() => {
+        window.location.href = appUrl;
+      }, 1500);
       return;
     }
 

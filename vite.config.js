@@ -16,6 +16,15 @@ export default defineConfig({
         theme_color: '#0f0f1a',
         background_color: '#0f0f1a',
         display: 'standalone',
+        orientation: 'portrait',
+        start_url: './',
+        scope: './',
+        protocol_handlers: [
+          {
+            protocol: "web+thegameapp",
+            url: "./?source=protocol"
+          }
+        ],
         icons: [
           {
             src: 'icon-192x192.png',
