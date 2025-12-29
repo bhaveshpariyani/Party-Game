@@ -31,7 +31,7 @@ export default function HomePage() {
                     className="text-gradient"
                     style={{ fontSize: '2.5rem', marginBottom: '1rem', fontWeight: 800 }}
                 >
-                    Party Games
+                    The Game App
                 </motion.h1>
                 <p style={{ color: 'var(--text-dim)' }}>Select a game to begin</p>
             </header>
