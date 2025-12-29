@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { motion, Reorder } from 'framer-motion';
+import { motion, Reorder, useDragControls } from 'framer-motion';
 import { Plus, X, ArrowRight, Settings, GripVertical, Trash2 } from 'lucide-react';
 
 export default function SetupScreen({ onStart }) {
@@ -179,18 +179,13 @@ export default function SetupScreen({ onStart }) {
                 <div style={{ maxHeight: '200px', overflowY: 'auto', paddingRight: '0.5rem' }}>
                     <Reorder.Group axis="y" values={trumps} onReorder={setTrumps} style={{ listStyle: 'none', padding: 0, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                         {trumps.map((trump) => (
-                            <Reorder.Item key={trump.id} value={trump} style={{ background: 'rgba(255,255,255,0.05)', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', padding: '0.5rem' }}>
-                                <GripVertical size={20} style={{ color: 'var(--text-dim)', cursor: 'grab', marginRight: '0.5rem' }} />
-                                <input
-                                    value={trump.text}
-                                    onChange={(e) => updateTrump(trump.id, e.target.value)}
-                                    onFocus={handleFocus}
-                                    style={{ flex: 1, background: 'transparent', border: 'none', color: 'white', fontSize: '1rem', outline: 'none' }}
-                                />
-                                <button onClick={() => removeTrump(trump.id)} className="btn-icon" style={{ color: 'var(--danger)', background: 'transparent', border: 'none', cursor: 'pointer' }}>
-                                    <Trash2 size={18} />
-                                </button>
-                            </Reorder.Item>
+                            <TrumpItem
+                                key={trump.id}
+                                trump={trump}
+                                updateTrump={updateTrump}
+                                removeTrump={removeTrump}
+                                handleFocus={handleFocus}
+                            />
                         ))}
                     </Reorder.Group>
                 </div>
@@ -204,5 +199,34 @@ export default function SetupScreen({ onStart }) {
                 Start Game <ArrowRight />
             </button>
         </motion.div>
+    );
+}
+
+function TrumpItem({ trump, updateTrump, removeTrump, handleFocus }) {
+    const controls = useDragControls();
+
+    return (
+        <Reorder.Item
+            value={trump}
+            dragListener={false}
+            dragControls={controls}
+            style={{ background: 'rgba(255,255,255,0.05)', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', padding: '0.5rem' }}
+        >
+            <div
+                onPointerDown={(e) => controls.start(e)}
+                style={{ cursor: 'grab', marginRight: '0.5rem', touchAction: 'none', padding: '0.5rem' }}
+            >
+                <GripVertical size={20} style={{ color: 'var(--text-dim)' }} />
+            </div>
+            <input
+                value={trump.text}
+                onChange={(e) => updateTrump(trump.id, e.target.value)}
+                onFocus={handleFocus}
+                style={{ flex: 1, background: 'transparent', border: 'none', color: 'white', fontSize: '1rem', outline: 'none' }}
+            />
+            <button onClick={() => removeTrump(trump.id)} className="btn-icon" style={{ color: 'var(--danger)', background: 'transparent', border: 'none', cursor: 'pointer' }}>
+                <Trash2 size={18} />
+            </button>
+        </Reorder.Item>
     );
 }
