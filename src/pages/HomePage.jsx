@@ -1,6 +1,8 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Gavel, Skull } from 'lucide-react';
+import { Gavel, Skull, Users } from 'lucide-react';
+
+import { useState, useEffect } from 'react';
 
 const games = [
     {
@@ -22,6 +24,19 @@ const games = [
 ];
 
 export default function HomePage() {
+    const [resumeGame, setResumeGame] = useState(null);
+
+    useEffect(() => {
+        const activeType = localStorage.getItem('active_session_type');
+        if (activeType === 'mafia_single') {
+            setResumeGame({ name: 'Mafia (Pass & Play)', path: '/mafia?resume=true', icon: Skull, color: '#a78bfa' });
+        } else if (activeType === 'mafia_multi') {
+            setResumeGame({ name: 'Mafia (Multiplayer)', path: '/mafia?resume=true', icon: Users, color: '#22d3ee' });
+        } else if (activeType === 'judgement') {
+            setResumeGame({ name: 'Judgement', path: '/judgement?resume=true', icon: Gavel, color: '#f472b6' });
+        }
+    }, []);
+
     return (
         <div style={{ padding: '2rem', maxWidth: '800px', margin: '0 auto', width: '100%' }}>
             <header style={{ marginBottom: '3rem', textAlign: 'center' }}>
@@ -35,6 +50,46 @@ export default function HomePage() {
                 </motion.h1>
                 <p style={{ color: 'var(--text-dim)' }}>Select a game to begin</p>
             </header>
+
+            {resumeGame && (
+                <Link to={resumeGame.path} style={{ textDecoration: 'none', display: 'block', marginBottom: '2rem' }}>
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="glass-panel"
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        style={{
+                            padding: '1.5rem',
+                            borderRadius: '1.2rem',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '1.5rem',
+                            background: `linear-gradient(135deg, ${resumeGame.color}22 0%, rgba(255,255,255,0.05) 100%)`, // Tint based on game
+                            border: `1px solid ${resumeGame.color}44`
+                        }}
+                    >
+                        <div
+                            style={{
+                                padding: '1rem',
+                                background: `${resumeGame.color}33`,
+                                borderRadius: '50%',
+                                color: resumeGame.color,
+                                boxShadow: `0 0 15px ${resumeGame.color}44`
+                            }}
+                        >
+                            <resumeGame.icon size={32} />
+                        </div>
+                        <div style={{ flex: 1 }}>
+                            <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'white' }}>Resume {resumeGame.name}</h3>
+                            <p style={{ margin: 0, color: 'var(--text-dim)', fontSize: '0.9rem' }}>Continue your previous session</p>
+                        </div>
+                        <div style={{ color: resumeGame.color, fontWeight: 600 }}>
+                            RESUME &rarr;
+                        </div>
+                    </motion.div>
+                </Link>
+            )}
 
             <div style={{ display: 'grid', gap: '1.5rem', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))' }}>
                 {games.map((game, i) => (

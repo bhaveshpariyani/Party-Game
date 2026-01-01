@@ -2,22 +2,18 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { AVAILABLE_ROLES } from '../RoleConfigScreen';
 import { HelpCircle, CheckCircle, Clock } from 'lucide-react';
-import { db } from '../../../../services/firebase'; // Ensure correct path or pass as prop if needed, but direct import is easiest here
+import ConfirmationModal from '../common/ConfirmationModal';
+import { db } from '../../../../services/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
 
-// Note: roomCode is needed to update Firestore. 
-// We can either pass roomCode or find it implicitly (but passing is safer). 
-// Actually, `player` usually doesn't have roomCode attached directly in the object unless we added it.
-// Let's assume we need roomCode passed from Controller too.
-
-export default function MultiplayerReveal({ player, players, isHost, onStartGame, roomCode }) {
+export default function MultiplayerReveal({ player, players, isHost, onStartGame, roomCode, onResetGame }) {
     const [isRevealed, setIsRevealed] = useState(false);
+    const [showResetConfirm, setShowResetConfirm] = useState(false);
 
     // 1. Handle Card Flip & Firestore Update
     const handleReveal = async () => {
         if (!isRevealed) {
             setIsRevealed(true);
-            // Update Firestore to say "I have seen my role"
             try {
                 if (roomCode && player?.id) {
                     await updateDoc(doc(db, 'rooms', roomCode, 'players', player.id), {
@@ -60,7 +56,7 @@ export default function MultiplayerReveal({ player, players, isHost, onStartGame
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
-            justifyContent: 'center', // Ensure vertical centering 
+            justifyContent: 'center',
             gap: '2rem'
         }}>
             <motion.div
@@ -111,7 +107,7 @@ export default function MultiplayerReveal({ player, players, isHost, onStartGame
                 <div style={{
                     width: '100%',
                     textAlign: 'center',
-                    marginTop: '2rem' // Increased spacing specifically here
+                    marginTop: '2rem'
                 }}>
                     {!canStart ? (
                         <div style={{
@@ -145,6 +141,35 @@ export default function MultiplayerReveal({ player, players, isHost, onStartGame
                     >
                         Start Night Phase
                     </button>
+
+                    <button
+                        className="btn-ghost"
+                        onClick={() => setShowResetConfirm(true)}
+                        style={{
+                            display: 'block',
+                            margin: '1rem auto 0',
+                            width: '100%',
+                            maxWidth: '300px',
+                            color: 'var(--danger)',
+                            borderColor: 'var(--danger)',
+                            opacity: 0.8
+                        }}
+                    >
+                        Reset Game
+                    </button>
+
+                    <ConfirmationModal
+                        isOpen={showResetConfirm}
+                        onCancel={() => setShowResetConfirm(false)}
+                        onConfirm={() => {
+                            setShowResetConfirm(false);
+                            onResetGame();
+                        }}
+                        title="Reset Game?"
+                        message="This will take everyone back to the lobby, clear all roles, and restart from scratch."
+                        confirmText="Reset Game"
+                        isDanger={true}
+                    />
                 </div>
             )}
             {!isHost && (

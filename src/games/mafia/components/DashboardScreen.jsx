@@ -9,16 +9,65 @@ export default function DashboardScreen({ assignments, onNewGame }) {
     const [showRoles, setShowRoles] = useState(false);
 
     useEffect(() => {
+        // Restore Timer State
+        const savedTimer = localStorage.getItem('mafia_timer_state');
+        if (savedTimer) {
+            try {
+                const { timeLeft, isActive, lastTick, customTime } = JSON.parse(savedTimer);
+                setCustomTime(customTime || '60');
+
+                if (isActive && timeLeft > 0) {
+                    // Calculate elapsed time since refresh
+                    const now = Date.now();
+                    const elapsed = Math.floor((now - lastTick) / 1000);
+                    const remaining = Math.max(0, timeLeft - elapsed);
+
+                    setTimeLeft(remaining);
+                    setIsActive(remaining > 0);
+                } else {
+                    setTimeLeft(timeLeft);
+                    setIsActive(isActive);
+                }
+            } catch (e) {
+                console.error("Failed to restore timer", e);
+            }
+        }
+    }, []);
+
+    useEffect(() => {
         let interval = null;
         if (isActive && timeLeft > 0) {
             interval = setInterval(() => {
-                setTimeLeft(timeLeft => timeLeft - 1);
+                setTimeLeft(prev => {
+                    const newValue = prev - 1;
+                    // Save state on every tick (debouncing handled by browser usually, but we can optimize if needed)
+                    // For accuracy on refresh, we save the timestamp
+                    localStorage.setItem('mafia_timer_state', JSON.stringify({
+                        timeLeft: newValue,
+                        isActive: true,
+                        lastTick: Date.now(),
+                        customTime
+                    }));
+                    return newValue;
+                });
             }, 1000);
         } else if (timeLeft === 0) {
             setIsActive(false);
+            localStorage.setItem('mafia_timer_state', JSON.stringify({ timeLeft: 0, isActive: false, customTime }));
         }
+
+        // Save on pause/change
+        if (!isActive) {
+            localStorage.setItem('mafia_timer_state', JSON.stringify({
+                timeLeft,
+                isActive: false,
+                lastTick: Date.now(),
+                customTime
+            }));
+        }
+
         return () => clearInterval(interval);
-    }, [isActive, timeLeft]);
+    }, [isActive, timeLeft, customTime]);
 
     const toggleTimer = () => setIsActive(!isActive);
     const resetTimer = () => {
@@ -31,7 +80,8 @@ export default function DashboardScreen({ assignments, onNewGame }) {
         setCustomTime(val);
         // Only update real timer if not active?
         if (!isActive) {
-            setTimeLeft(parseInt(val) || 0);
+            const newTime = parseInt(val) || 0;
+            setTimeLeft(newTime);
         }
     };
 
@@ -115,7 +165,14 @@ export default function DashboardScreen({ assignments, onNewGame }) {
             </div>
 
             <div style={{ marginTop: '3rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                <button onClick={onNewGame} className="btn-ghost" style={{ width: '100%', borderStyle: 'dashed' }}>
+                <button
+                    onClick={() => {
+                        localStorage.removeItem('mafia_timer_state');
+                        onNewGame();
+                    }}
+                    className="btn-ghost"
+                    style={{ width: '100%', borderStyle: 'dashed' }}
+                >
                     Start New Game
                 </button>
                 <Link to="/" style={{ textDecoration: 'none' }}>

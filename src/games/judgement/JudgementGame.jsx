@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import SetupScreen from './components/SetupScreen';
 import ScorepadScreen from './components/ScorepadScreen';
 import RoundInputScreen from './components/RoundInputScreen';
-import HomeButton from '../../components/HomeButton';
+
 
 export default function JudgementGame() {
     const [stage, setStage] = useState('setup'); // setup, roundInput, scorepad
@@ -54,6 +55,51 @@ export default function JudgementGame() {
         setStage('scorepad');
     };
 
+    // Load Session & Resume Check
+    const location = useLocation();
+    useEffect(() => {
+        // Resume check
+        const params = new URLSearchParams(location.search);
+        // We load session regardless on mount, but let's ensure we are consistent if the button triggered it.
+        // Actually, JudgementGame loads session automatically on mount in the existing useEffect.
+        // We just need to make sure we don't clear it unexpectedly.
+    }, [location]);
+
+    // Load Session
+    useEffect(() => {
+        const savedSession = localStorage.getItem('judgement_session');
+        if (savedSession) {
+            try {
+                const session = JSON.parse(savedSession);
+                setPlayers(session.players || []);
+                setSettings(session.settings || {});
+                setRounds(session.rounds || []);
+                setCurrentRoundNum(session.currentRoundNum || 1);
+                setCurrentTrump(session.currentTrump || '');
+                setStage(session.stage || 'setup');
+            } catch (e) {
+                console.error("Failed to restore Judgement session", e);
+                localStorage.removeItem('judgement_session');
+            }
+        }
+    }, []);
+
+    // Save Session (and active type)
+    useEffect(() => {
+        if (stage !== 'setup') {
+            const session = {
+                stage,
+                players,
+                settings,
+                rounds,
+                currentRoundNum,
+                currentTrump
+            };
+            localStorage.setItem('judgement_session', JSON.stringify(session));
+            localStorage.setItem('active_session_type', 'judgement');
+        }
+    }, [stage, players, settings, rounds, currentRoundNum, currentTrump]);
+
     const nextRound = () => {
         const nextNum = currentRoundNum + 1;
         setCurrentRoundNum(nextNum);
@@ -69,7 +115,7 @@ export default function JudgementGame() {
 
     return (
         <div style={{ width: '100%', maxWidth: '800px', margin: '0 auto', paddingBottom: '2rem' }}>
-            <HomeButton />
+
             <AnimatePresence mode="wait">
                 {stage === 'setup' && (
                     <SetupScreen key="setup" onStart={startGame} />
@@ -92,7 +138,11 @@ export default function JudgementGame() {
                         rounds={rounds}
                         settings={settings}
                         onNextRound={nextRound}
-                        onEndGame={() => setStage('setup')}
+                        onEndGame={() => {
+                            localStorage.removeItem('judgement_session');
+                            localStorage.removeItem('active_session_type');
+                            setStage('setup');
+                        }}
                     />
                 )}
             </AnimatePresence>

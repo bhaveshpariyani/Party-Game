@@ -1,24 +1,36 @@
 import { useState, useEffect } from 'react';
 import { db, auth } from '../../../../services/firebase'; // Adjust path
-import { doc, getDoc, setDoc, onSnapshot, collection, query, where } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, query, where } from 'firebase/firestore';
 import { signInAnonymously } from 'firebase/auth';
 import { motion } from 'framer-motion';
 import Lobby from './Lobby';
 
-export default function MultiplayerController({ onBack }) {
+export default function MultiplayerController({ onBack, autoConnect = false }) {
     const [gameState, setGameState] = useState('lobby'); // lobby, setup, game
     const [roomCode, setRoomCode] = useState(null);
     const [isHost, setIsHost] = useState(false);
     const [playerId, setPlayerId] = useState(null);
     const [playerName, setPlayerName] = useState('');
     const [players, setPlayers] = useState([]);
+    const [currentCounts, setCurrentCounts] = useState({ night: 1, day: 0 });
+    const [currentGameId, setCurrentGameId] = useState(null);
 
-    // Auth on mount
+    // Auth & Session Restore
     useEffect(() => {
+        // 1. Auth
         signInAnonymously(auth).then((creds) => {
             setPlayerId(creds.user.uid);
         }).catch(err => console.error("Auth failed", err));
-    }, []);
+
+        // 2. Restore Session (Only if autoConnect is true)
+        if (autoConnect) {
+            const savedCode = localStorage.getItem('mafia_room_code');
+            if (savedCode) {
+                setRoomCode(savedCode);
+                // We don't set gameState here, the snapshot listener will handle it once roomCode is set
+            }
+        }
+    }, [autoConnect]);
 
     // Create Room
     const createRoom = async (name) => {
@@ -32,6 +44,7 @@ export default function MultiplayerController({ onBack }) {
                 hostId: playerId,
                 status: 'lobby', // lobby, setup, night, day
                 phaseData: {},
+                gameId: Date.now(), // Unique ID for this session
                 settings: {
                     detailedMode: false // Default
                 }
@@ -50,6 +63,8 @@ export default function MultiplayerController({ onBack }) {
             setPlayerName(name);
             setIsHost(true);
             setGameState('lobby'); // Stay in lobby to wait for others
+            localStorage.setItem('mafia_room_code', code);
+            localStorage.setItem('active_session_type', 'mafia_multi');
         } catch (e) {
             console.error("Error creating room:", e);
             alert("Failed to create room: " + e.message);
@@ -83,6 +98,8 @@ export default function MultiplayerController({ onBack }) {
             setPlayerName(name);
             setIsHost(false);
             setGameState('lobby');
+            localStorage.setItem('mafia_room_code', code);
+            localStorage.setItem('active_session_type', 'mafia_multi');
         } catch (e) {
             console.error("Error joining room:", e);
             alert("Failed to join: " + e.message);
@@ -103,7 +120,11 @@ export default function MultiplayerController({ onBack }) {
             'settings.detailedMode': config.detailedMode
         }, { merge: true });
 
-        // 2. Assign Roles Logic
+        // 2. Assign Roles Logic & Host Transfer
+        // The Presenter becomes the new Host
+        const presenterAssignment = config.assignments.find(a => a.role === 'presenter');
+        const presenterId = presenterAssignment ? presenterAssignment.player.id : null;
+
         // Strip non-serializable data locally before saving
         const cleanAssignments = config.assignments.map(a => {
             const { icon, ...rest } = a.roleData; // Remove icon component
@@ -114,13 +135,27 @@ export default function MultiplayerController({ onBack }) {
             };
         });
 
-        // Save each player's role
-        const updatePromises = cleanAssignments.map(a =>
-            setDoc(doc(db, 'rooms', roomCode, 'players', a.pid), {
+        // Save each player's role AND update Host status
+        const updatePromises = cleanAssignments.map(a => {
+            const isNewHost = a.pid === presenterId;
+            return setDoc(doc(db, 'rooms', roomCode, 'players', a.pid), {
                 role: a.role,
-                roleData: a.roleData
-            }, { merge: true })
-        );
+                roleData: a.roleData,
+                isHost: isNewHost // Transfer Host status
+            }, { merge: true });
+        });
+
+        // Loop through Players NOT in assignments (if any?) to strip Host? 
+        // Ideally everyone is likely assigned or we iterate 'players' state instead.
+        // But for safe measure, we can iterate 'players' if needed. 
+        // For now, assuming assignments cover active players.
+
+        // Also update the Room's hostId
+        if (presenterId) {
+            updatePromises.push(
+                setDoc(doc(db, 'rooms', roomCode), { hostId: presenterId }, { merge: true })
+            );
+        }
 
         await Promise.all(updatePromises);
 
@@ -153,13 +188,63 @@ export default function MultiplayerController({ onBack }) {
     // End Day -> Eliminate -> Go to Night (Host Only)
     const handleEndDay = async (eliminatedId) => {
         if (eliminatedId) {
-            await setDoc(doc(db, 'rooms', roomCode, 'players', eliminatedId), {
-                isAlive: false
-            }, { merge: true });
+            console.log("Processing Elimination:", eliminatedId);
+            try {
+                await updateDoc(doc(db, 'rooms', roomCode, 'players', eliminatedId), {
+                    isAlive: false
+                });
+                console.log("Elimination successful");
+            } catch (e) {
+                console.error("Failed to eliminate player:", e);
+                // Fallback if update fails (e.g. document missing?) - try set with merge
+                await setDoc(doc(db, 'rooms', roomCode, 'players', eliminatedId), {
+                    isAlive: false
+                }, { merge: true });
+            }
         }
 
         // Go to next night
         handleStartNight();
+    };
+
+
+    // Reset Game (Host Only)
+    const handleResetGame = async () => {
+        // Validation moved to UI components via ConfirmationModal
+        try {
+            // 1. Reset Room Status
+            await setDoc(doc(db, 'rooms', roomCode), {
+                status: 'lobby',
+                nightCount: 1,
+                dayCount: 0,
+                phaseData: {},
+                gameId: Date.now(), // Generate new Game ID to invalidate old actions
+                actions: {}
+            }, { merge: true });
+
+            // 2. Reset Players
+            // 2. Reset Players - Cleanup Logic
+            const resetPromises = players.map(p => {
+                // If dead/eliminated AND NOT HOST, remove them from the room entirely (Kick)
+                if (!p.isAlive && !p.isHost) {
+                    return deleteDoc(doc(db, 'rooms', roomCode, 'players', p.id));
+                }
+
+                // If alive, just reset their state
+                return setDoc(doc(db, 'rooms', roomCode, 'players', p.id), {
+                    role: null,
+                    roleData: {},
+                    isAlive: true,
+                    isHost: p.isHost // Preserve host status
+                }, { merge: true });
+            });
+
+            await Promise.all(resetPromises);
+
+        } catch (e) {
+            console.error("Error resetting game:", e);
+            alert("Failed to reset game.");
+        }
     };
 
 
@@ -186,9 +271,10 @@ export default function MultiplayerController({ onBack }) {
 
                 // Track counts locally for transition logic
                 setCurrentCounts({
-                    night: data.nightCount || 1,
-                    day: data.dayCount || 0
+                    night: Number(data.nightCount) || 1,
+                    day: Number(data.dayCount) || 0
                 });
+                setCurrentGameId(data.gameId || 'legacy');
             }
         });
 
@@ -198,10 +284,33 @@ export default function MultiplayerController({ onBack }) {
         };
     }, [roomCode]);
 
-    const [currentCounts, setCurrentCounts] = useState({ night: 1, day: 0 });
+    // Sync Host Status & Handle Elimination Cleanup
+    useEffect(() => {
+        if (playerId && players.length > 0) {
+            const me = players.find(p => p.id === playerId);
+            if (me) {
+                setIsHost(me.isHost || false);
+
+                // Elimination Cleanup (Strict Prevention)
+                if (!me.isAlive) {
+                    localStorage.removeItem('active_session_type');
+                    // We don't remove room_code here to allow them to perhaps Spectate? 
+                    // User said: "kick off them from game remove last game state for them as well so they can not rejoin"
+                    // So we should probably route them away or show a specific "You are dead" screen that doesn't allow resume.
+                    // Removing active_session_type prevents the "Resume" button from working.
+                }
+            }
+        }
+    }, [players, playerId]);
 
     const myPlayer = players.find(p => p.id === playerId);
     const isPresenter = myPlayer?.role === 'presenter';
+
+    const handleLeaveRoom = () => {
+        localStorage.removeItem('mafia_room_code');
+        localStorage.removeItem('active_session_type');
+        onBack();
+    };
 
     return (
         <div style={{ padding: '1rem', height: '100%' }}>
@@ -212,7 +321,7 @@ export default function MultiplayerController({ onBack }) {
                     isHost={isHost}
                     onCreate={createRoom}
                     onJoin={joinRoom}
-                    onBack={onBack}
+                    onBack={handleLeaveRoom}
                     onStartSetup={handleStartSetup}
                     currentUser={playerId}
                 />
@@ -220,9 +329,6 @@ export default function MultiplayerController({ onBack }) {
 
             {gameState === 'setup' && (
                 isHost ? (
-                    // Import RoleConfigScreen lazily or assuming it's available in context? 
-                    // I will need to pass it as prop or import clearly.
-                    // Assuming MultiplayerController knows about RoleConfigScreen
                     <RoleConfigWrapper
                         players={players}
                         onNext={handleSubmitRoles}
@@ -242,10 +348,11 @@ export default function MultiplayerController({ onBack }) {
             {gameState === 'reveal' && (
                 <MultiplayerReveal
                     player={players.find(p => p.id === playerId)}
-                    players={players} // Pass all players to check status
+                    players={players}
                     roomCode={roomCode}
                     isHost={isHost || isPresenter}
                     onStartGame={handleStartNight}
+                    onResetGame={handleResetGame}
                 />
             )}
             {gameState === 'night' && (
@@ -253,9 +360,11 @@ export default function MultiplayerController({ onBack }) {
                     roomCode={roomCode}
                     players={players}
                     currentUser={playerId}
-                    isHost={isPresenter} // Pass Presenter as Host for Logic
+                    isHost={isPresenter}
                     nightCount={currentCounts.night}
+                    gameId={currentGameId}
                     onEndNight={handleEndNight}
+                    onResetGame={handleResetGame}
                 />
             )}
             {gameState === 'day' && (
@@ -263,9 +372,11 @@ export default function MultiplayerController({ onBack }) {
                     roomCode={roomCode}
                     players={players}
                     currentUser={playerId}
-                    isHost={isPresenter} // Pass Presenter as Host for Logic
+                    isHost={isPresenter}
                     dayCount={currentCounts.day}
+                    gameId={currentGameId}
                     onEndDay={handleEndDay}
+                    onResetGame={handleResetGame}
                 />
             )}
         </div>

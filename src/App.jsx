@@ -5,6 +5,7 @@ import MafiaGame from './games/mafia/MafiaGame';
 import JudgementGame from './games/judgement/JudgementGame';
 import { usePWAInstall } from './hooks/use-pwa-install';
 import InstallAppModal from './components/install-prompt-modal';
+import HomeButton from './components/HomeButton';
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -68,6 +69,7 @@ function App() {
   return (
     <HashRouter>
       <ScrollToTop />
+      <HomeButton />
 
       {shouldShowModal && (
         <InstallAppModal
