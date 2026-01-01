@@ -307,8 +307,11 @@ export default function MultiplayerController({ onBack, autoConnect = false }) {
     const isPresenter = myPlayer?.role === 'presenter';
 
     const handleLeaveRoom = () => {
-        localStorage.removeItem('mafia_room_code');
-        localStorage.removeItem('active_session_type');
+        // Only clear session if we are actively in a room
+        if (roomCode) {
+            localStorage.removeItem('mafia_room_code');
+            localStorage.removeItem('active_session_type');
+        }
         onBack();
     };
 

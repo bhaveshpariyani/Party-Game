@@ -66,7 +66,8 @@ export default function HomePage() {
                             alignItems: 'center',
                             gap: '1.5rem',
                             background: `linear-gradient(135deg, ${resumeGame.color}22 0%, rgba(255,255,255,0.05) 100%)`, // Tint based on game
-                            border: `1px solid ${resumeGame.color}44`
+                            border: `1px solid ${resumeGame.color}44`,
+                            flexWrap: 'wrap' // Allow wrapping on small screens
                         }}
                     >
                         <div
@@ -80,11 +81,11 @@ export default function HomePage() {
                         >
                             <resumeGame.icon size={32} />
                         </div>
-                        <div style={{ flex: 1 }}>
+                        <div style={{ flex: 1, minWidth: '180px' }}>
                             <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'white' }}>Resume {resumeGame.name}</h3>
                             <p style={{ margin: 0, color: 'var(--text-dim)', fontSize: '0.9rem' }}>Continue your previous session</p>
                         </div>
-                        <div style={{ color: resumeGame.color, fontWeight: 600 }}>
+                        <div style={{ color: resumeGame.color, fontWeight: 600, whiteSpace: 'nowrap' }}>
                             RESUME &rarr;
                         </div>
                     </motion.div>
