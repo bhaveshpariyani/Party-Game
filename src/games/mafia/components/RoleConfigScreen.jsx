@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { Minus, Plus, ArrowRight, ArrowLeft, Users, User, Shield, Search, Zap, Skull, Mic, Trash2, HelpCircle, Crown } from 'lucide-react';
 import clsx from 'clsx';
 
-const AVAILABLE_ROLES = [
+export const AVAILABLE_ROLES = [
     { id: 'villager', label: 'Villager', icon: User, color: '#10b981' },
     { id: 'mafia', label: 'Mafia', icon: Skull, color: '#ef4444' },
     { id: 'doctor', label: 'Doctor', icon: Shield, color: '#3b82f6' },
@@ -16,6 +16,7 @@ export default function RoleConfigScreen({ players, onNext, onBack }) {
     const [counts, setCounts] = useState({});
     const [customRoles, setCustomRoles] = useState([]); // [{ id, label, count }]
     const [newRoleName, setNewRoleName] = useState('');
+    const [detailedMode, setDetailedMode] = useState(true); // Default true
 
     // Initialize counts
     useEffect(() => {
@@ -104,7 +105,7 @@ export default function RoleConfigScreen({ players, onNext, onBack }) {
             };
         });
 
-        onNext({ counts, assignments });
+        onNext({ counts, assignments, detailedMode });
     };
 
     return (
@@ -119,6 +120,19 @@ export default function RoleConfigScreen({ players, onNext, onBack }) {
                 <p style={{ color: isValid ? 'var(--success)' : 'var(--text-dim)' }}>
                     {remaining === 0 ? 'Ready to start!' : `For ${totalPlayers} players, assign ${remaining} more`}
                 </p>
+
+                <div style={{ marginTop: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+                    <input
+                        type="checkbox"
+                        id="detailedMode"
+                        checked={detailedMode}
+                        onChange={(e) => setDetailedMode(e.target.checked)}
+                        style={{ width: '20px', height: '20px', accentColor: 'var(--primary)' }}
+                    />
+                    <label htmlFor="detailedMode" style={{ color: 'var(--text-dim)', cursor: 'pointer' }}>
+                        Enable Detailed Simulation
+                    </label>
+                </div>
             </header>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2rem', maxHeight: '60vh', overflowY: 'auto', paddingRight: '0.5rem' }}>
